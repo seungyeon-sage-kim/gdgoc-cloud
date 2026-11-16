@@ -1,0 +1,309 @@
+# CI/CD: checks → build four images → push to Artifact Registry → apply infra/ if it
+# changed → new revisions with no traffic → smoke test → switch, or put everything
+# back if any of it fails.
+#
+# Checks: lint and format (ruff), tests (pytest), the cloud code path against
+# the Firestore and Pub/Sub emulators, known vulnerabilities in dependencies
+# (pip-audit) and in the image (Trivy), Dockerfile lint (hadolint), Terraform
+# format and validate. Pull requests only run the checks and build. Pushes to
+# main also push the images, and deploy when DEPLOY_ENABLED is "true". Terraform
+# applies under the same switch, if the project has an account for it (TERRAFORM_SA).
+#
+# Every action is pinned to a commit SHA (the tag is in the comment): a tag can
+# be moved to different code, a SHA cannot. Dependabot proposes updates. Google Cloud login is keyless (Workload
+# Identity Federation): no service-account key is stored in GitHub.
+#
+# Repository variables (Settings → Secrets and variables → Actions → Variables):
+#   GCP_PROJECT_ID   your project ID
+#   GCP_REGION       e.g. asia-northeast3
+#   GAR_REPOSITORY   Artifact Registry repository, e.g. gdgoc-tickets
+#   WIF_PROVIDER     projects/NUMBER/locations/global/workloadIdentityPools/github/providers/gdgoc-tickets
+#   DEPLOYER_SA      deployer@PROJECT.iam.gserviceaccount.com
+#   DEPLOY_ENABLED   "true" to deploy (leave unset until the Cloud setup is done)
+#   TERRAFORM_SA     terraform@PROJECT.iam.gserviceaccount.com, only with production_extras
+#   TFVARS           a copy of infra/terraform.tfvars, only with production_extras
+#   PRODUCTION_EXTRAS "true" makes the image scan stop the deploy; otherwise it only reports
+# The infrastructure, including these values, comes from Terraform: infra/ (see docs/ci-setup.md)
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      allow_destroy:
+        description: Apply a Terraform plan that destroys or replaces resources (read the plan in the run that stopped first)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  TERRAFORM_VERSION: "1.9.8"
+
+# A newer push cancels an older run on pull requests. On main it waits instead:
+# cancelling a deploy halfway could leave services on different versions.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: pipx run ruff==0.14.0 check .
+      - run: pipx run ruff==0.14.0 format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest -q
+      # The cloud code path must at least import cleanly
+      - run: BACKEND=gcp GCP_PROJECT=ci TICKET_SECRET=ci SESSION_SECRET=ci python -c "import web.main, ticket_worker.main, waitlist_promoter.main, jobs.housekeeping"
+
+  dockerfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: Dockerfile
+          ignore: DL3008,DL3013 # unpinned apt/pip versions: requirements.txt pins what matters
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
+      # Plans every stage of the lab against a pretend Google Cloud (infra/tests)
+      - run: terraform test
+
+  emulator:
+    runs-on: ubuntu-latest
+    env:
+      BACKEND: gcp
+      GCP_PROJECT: demo-tickets
+      TICKET_SECRET: emulator-only
+      SESSION_SECRET: emulator-only
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:8085
+      PUBSUB_EMULATOR_HOST: 127.0.0.1:8086
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        with:
+          install_components: beta,cloud-firestore-emulator,pubsub-emulator
+      - run: pip install -r requirements.txt pytest
+      - name: Start the Firestore and Pub/Sub emulators
+        run: |
+          gcloud emulators firestore start --host-port="$FIRESTORE_EMULATOR_HOST" --quiet > firestore.log 2>&1 &
+          gcloud beta emulators pubsub start --host-port="$PUBSUB_EMULATOR_HOST" --project="$GCP_PROJECT" --quiet > pubsub.log 2>&1 &
+          for i in $(seq 1 90); do
+            curl -s "http://$FIRESTORE_EMULATOR_HOST" > /dev/null && curl -s "http://$PUBSUB_EMULATOR_HOST" > /dev/null && exit 0
+            sleep 1
+          done
+          cat firestore.log pubsub.log; exit 1
+      - run: python -m pytest -q tests/test_gcp_emulator.py
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - run: pipx run pip-audit==2.9.0 -r requirements.txt
+
+  image-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # All four images share this base (OS, Python, dependencies), so scanning web covers them
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: web
+          load: true
+          tags: gdgoc-tickets-web:scan
+          cache-from: type=gha,scope=web
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: gdgoc-tickets-web:scan
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true # only problems that have a fix to install
+          # Production stops on them. A lab only reports them: one new advisory during the
+          # lab weeks would otherwise stop every student's deploy at once
+          exit-code: ${{ vars.PRODUCTION_EXTRAS == 'true' && '1' || '0' }}
+
+  build:
+    needs: [lint, test, emulator, audit, image-scan, dockerfile, terraform]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # lets GitHub issue the token that Google Cloud trusts
+    strategy:
+      matrix:
+        target: [web, ticket-worker, waitlist-promoter, housekeeping]
+    env:
+      PUSH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.GCP_PROJECT_ID != '' }}
+      IMAGE: ${{ vars.GCP_REGION || 'asia-northeast3' }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID || 'local' }}/${{ vars.GAR_REPOSITORY || 'gdgoc-tickets' }}/${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - id: auth
+        if: env.PUSH == 'true'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOYER_SA }}
+          token_format: access_token
+
+      - if: env.PUSH == 'true'
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ${{ vars.GCP_REGION || 'asia-northeast3' }}-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      # Every image is tagged with the commit SHA, so each deploy points at
+      # exactly one commit. (Rollback is not a rebuild: see docs/revisions.md)
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: ${{ env.PUSH == 'true' }}
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+
+  # scripts/infra.sh explains each stage. This job holds the most powerful login in the
+  # project, so it runs only pinned Google, HashiCorp and GitHub actions, and the plan
+  # file, which holds secrets in plain text, stays on this runner.
+  infra:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true' && vars.TERRAFORM_SA != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # to find the last run that succeeded
+      id-token: write
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      TFVARS: ${{ vars.TFVARS }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # to compare with the last run that succeeded
+
+      - name: Has infra/ changed?
+        id: changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/infra.sh changes
+
+      - if: steps.changes.outputs.infra == 'true'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.TERRAFORM_SA }}
+
+      - if: steps.changes.outputs.infra == 'true'
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false # its extra output would break terraform show -json
+
+      - name: Plan
+        if: steps.changes.outputs.infra == 'true'
+        run: scripts/infra.sh plan
+
+      - name: Stop if the plan destroys anything
+        if: steps.changes.outputs.infra == 'true'
+        env:
+          ALLOW_DESTROY: ${{ inputs.allow_destroy }} # empty on a push
+        run: scripts/infra.sh check
+
+      - name: Apply that plan
+        if: steps.changes.outputs.infra == 'true'
+        run: scripts/infra.sh apply
+
+  deploy:
+    needs: [build, infra]
+    # !cancelled and the results: a skipped infra job must not stop the deploy, a failed one must
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.infra.result != 'failure' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    # GitHub keeps a deployment history for this environment, with the live URL
+    environment:
+      name: production
+      url: ${{ steps.live.outputs.url }}
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION || 'asia-northeast3' }}
+      IMAGES: ${{ vars.GCP_REGION || 'asia-northeast3' }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GAR_REPOSITORY || 'gdgoc-tickets' }}
+      WEB_SERVICE: ${{ vars.WEB_SERVICE || 'web' }} # web's Cloud Run service, if not named web (terraform output web_service_name)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      # Terraform (infra/) creates the services and owns their settings: identity,
+      # concurrency, max instances, env vars, secrets. CI only swaps the image, so
+      # each push becomes a new revision of an existing service. `update` (not
+      # `deploy`) fails loudly if Terraform has not created the service yet.
+      #
+      # All or nothing: every new revision starts with no traffic, and only when all
+      # of them work do the services move. scripts/deploy.sh explains each stage.
+
+      - name: Record what is serving now
+        run: scripts/deploy.sh record
+
+      - name: Start the new revisions with no traffic
+        run: scripts/deploy.sh stage
+
+      - name: Smoke test web's new revision
+        run: scripts/deploy.sh smoke
+
+      - name: Switch to the new version
+        run: scripts/deploy.sh switch
+
+      - name: Check the live URL
+        id: live
+        run: scripts/deploy.sh verify
+
+      # Also after a manual cancel, which can stop the switch halfway
+      - name: Put everything back
+        if: failure() || cancelled()
+        run: scripts/deploy.sh rollback

@@ -1,0 +1,12 @@
+.venv/
+.data/
+.env
+__pycache__/
+.pytest_cache/
+infra/.terraform/
+infra/*.tfstate*
+infra/terraform.tfvars
+.ruff_cache/
+infra/backend.hcl
+infra/lab.tfplan
+infra/lab.*.txt

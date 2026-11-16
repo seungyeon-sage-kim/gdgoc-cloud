@@ -1,0 +1,155 @@
+/*
+  Design tokens: the only place raw values live. Components use these variables.
+
+  A quiet product palette in light and dark. Borrowed from the GDGoC Yonsei
+  website as inspiration: Google Sans Flex with Pretendard, the GDG soft and ink
+  color pairs for status chips, pill buttons. Everything else is this service's own.
+*/
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --paper: #f6f6f4;          /* the page */
+  --surface: #ffffff;        /* cards, panels */
+  --surface-sunken: #efefec; /* wells inside cards */
+  --inverse: #18181b;        /* toast, camera frame */
+  --on-inverse: #f4f4f5;
+
+  /* Text and lines */
+  --ink: #18181b;
+  --ink-muted: #56565c;
+  --ink-subtle: #707076;     /* 4.5:1 on white */
+  --edge: #e3e3df;
+  --edge-strong: #cfcfca;
+  --control-border: #8d8d88; /* 3:1: visible field edges */
+
+  /* Brand blue for links, focus and selection (GDG blue) */
+  --g-blue: #4285f4;
+  --accent: #0b57d0;
+  --accent-soft: #d3e3fd;
+
+  /* GDG soft fill and readable ink pairs: status chips */
+  --blue-soft: #d3e3fd;
+  --blue-ink: #0b57d0;
+  --green-soft: #ccf6c5;
+  --green-ink: #137333;
+  --yellow-soft: #ffe7a5;
+  --yellow-ink: #8a4f00;
+  --red-soft: #fad2cf;
+  --red-ink: #b3261e;
+
+  /* Roles */
+  --primary: #18181b;        /* solid buttons */
+  --on-primary: #ffffff;
+  --success: var(--green-ink);
+  --success-soft: var(--green-soft);
+  --warning: var(--yellow-ink);
+  --warning-soft: var(--yellow-soft);
+  --danger: var(--red-ink);
+  --danger-soft: var(--red-soft);
+  --on-danger: #ffffff;
+
+  /* Filled colors for the door's check-in result strip: white text in both themes */
+  --solid-neutral: #56565c;
+  --solid-ok: #137333;
+  --solid-warn: #8a4f00;
+  --solid-bad: #b3261e;
+  --solid-ink: #ffffff;
+
+  /* Event covers: deep tones that carry white text, one per event */
+  --tint-blue: #2a56c6;
+  --tint-sky: #0f6e8c;
+  --tint-green: #1d6b47;
+  --tint-yellow: #9a5a05;
+  --tint-red: #b23b2a;
+  --tint-pink: #96305f;
+
+  /* Type */
+  --font-sans: "Google Sans Flex", "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic",
+    "Noto Sans KR", system-ui, sans-serif;
+  --font-mono: "Google Sans Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-xs: 0.75rem;   /* 12 */
+  --text-sm: 0.875rem;  /* 14 */
+  --text-md: 1rem;      /* 16 */
+  --text-lg: 1.125rem;  /* 18 */
+  --text-xl: 1.25rem;   /* 20 */
+  --text-2xl: 1.625rem; /* 26 */
+  --text-3xl: 2.25rem;  /* 36 */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.6;
+
+  /* Space: a 4px grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Shape */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* Depth: cards lift slightly on hover; dialogs and toasts float */
+  --shadow-hover: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.18);
+  --shadow-float: 0 12px 40px -12px rgb(0 0 0 / 0.3);
+
+  /* Motion */
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --fast: 150ms;
+  --slow: 300ms;
+
+  /* Layout */
+  --content-width: 1040px;
+  --control-height: 46px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --paper: #111113;
+    --surface: #1a1a1d;
+    --surface-sunken: #222226;
+    --inverse: #f4f4f5;
+    --on-inverse: #18181b;
+
+    --ink: #ededee;
+    --ink-muted: #a9a9af;
+    --ink-subtle: #8d8d93;
+    --edge: #2b2b30;
+    --edge-strong: #3a3a40;
+    --control-border: #6e6e75;
+
+    --accent: #8ab4f8;
+    --accent-soft: color-mix(in oklab, #4285f4 24%, #1a1a1d);
+
+    --blue-soft: color-mix(in oklab, #4285f4 24%, #1a1a1d);
+    --blue-ink: #8ab4f8;
+    --green-soft: color-mix(in oklab, #34a853 24%, #1a1a1d);
+    --green-ink: #5cdb6d;
+    --yellow-soft: color-mix(in oklab, #f9ab00 22%, #1a1a1d);
+    --yellow-ink: #ffd427;
+    --red-soft: color-mix(in oklab, #ea4335 24%, #1a1a1d);
+    --red-ink: #f28b82;
+
+    --primary: #f4f4f5;
+    --on-primary: #18181b;
+    --on-danger: #18181b;
+
+    --shadow-hover: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+    --shadow-float: 0 12px 40px -12px rgb(0 0 0 / 0.7);
+  }
+}

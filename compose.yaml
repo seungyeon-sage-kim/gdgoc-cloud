@@ -1,0 +1,54 @@
+# Run the same images Cloud Run will run, on this laptop:
+#   docker compose up --build                     # web on http://localhost:8080
+#   docker compose run --rm housekeeping --force-release   # run the job once, releasing now
+#
+# Only web publishes a port. The worker and the promoter are reachable only
+# from inside this network, the way they are private on Cloud Run.
+# The shared "data" volume stands in for Firestore and Cloud Storage.
+
+x-common: &common
+  env_file:
+    - path: .env
+      required: false
+  volumes:
+    - data:/tmp/data
+
+services:
+  web:
+    <<: *common
+    build: { context: ., target: web }
+    image: gdgoc-tickets/web
+    ports: ["8080:8080"]
+    environment:
+      K_SERVICE: web
+      PUSH_ENDPOINT: http://ticket-worker:8080/
+      WAITLIST_PROMOTER_URL: http://waitlist-promoter:8080/
+    depends_on: [ticket-worker, waitlist-promoter]
+
+  ticket-worker:
+    <<: *common
+    build: { context: ., target: ticket-worker }
+    image: gdgoc-tickets/ticket-worker
+    environment:
+      K_SERVICE: ticket-worker
+
+  waitlist-promoter:
+    <<: *common
+    build: { context: ., target: waitlist-promoter }
+    image: gdgoc-tickets/waitlist-promoter
+    environment:
+      K_SERVICE: waitlist-promoter
+      PUSH_ENDPOINT: http://ticket-worker:8080/
+
+  housekeeping:
+    <<: *common
+    build: { context: ., target: housekeeping }
+    image: gdgoc-tickets/housekeeping
+    environment:
+      PUSH_ENDPOINT: http://ticket-worker:8080/
+      WAITLIST_PROMOTER_URL: http://waitlist-promoter:8080/
+    depends_on: [ticket-worker, waitlist-promoter]
+    profiles: [job]
+
+volumes:
+  data:

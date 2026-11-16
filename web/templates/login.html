@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% set title_text = heading or {"login": "로그인", "signup": "회원가입"}[mode] %}
+{% block title %}{{ title_text }}{% endblock %}
+{% set use_google = settings.google_client_id %}
+{% set use_email = mail_ready or not settings.google_client_id %}
+{% block content %}
+<section class="gate card stack-lg" data-login data-next="{{ next }}" data-mode="{{ mode }}">
+  <div class="stack" data-step="start">
+    <h1 style="font-size: var(--text-2xl)">{{ title_text }}</h1>
+    {% if intro %}
+      <p class="muted" style="font-size: var(--text-sm)">{{ intro }}</p>
+    {% endif %}
+    {% if not mail_ready and not settings.google_client_id %}
+      <p class="draft-note">이메일 발송이 아직 설정되지 않아 운영진만 로그인할 수 있습니다.</p>
+    {% endif %}
+
+    {% if use_google %}
+      <div class="stack" data-google data-client-id="{{ settings.google_client_id }}" data-text="{{ 'signup_with' if mode == 'signup' else 'continue_with' }}">
+        <div class="google-button" data-google-button></div>
+        <p class="field-error" data-google-error hidden></p>
+      </div>
+      {% if use_email %}<p class="login-or">또는</p>{% endif %}
+    {% endif %}
+
+    {% if use_email %}
+      <form class="stack" data-email-form novalidate>
+        {% if mode == "signup" %}
+          <div class="field">
+            <label class="field-label" for="signup-name">이름</label>
+            <input class="input" id="signup-name" name="name" autocomplete="name" maxlength="40" required placeholder="김연세">
+          </div>
+        {% endif %}
+        <div class="field">
+          <label class="field-label" for="login-email">이메일</label>
+          <input class="input" id="login-email" name="email" type="email" autocomplete="email" required placeholder="you@yonsei.ac.kr">
+        </div>
+        {% if mode == "signup" %}
+          <label class="check"><input type="checkbox" name="agree" data-agree> <span><a href="/terms" target="_blank">이용약관</a>과 <a href="/privacy" target="_blank">개인정보 수집 및 이용</a>에 동의합니다 (필수)</span></label>
+        {% endif %}
+        <p class="field-error" data-error hidden></p>
+        <button class="btn btn--primary btn--block" type="submit">{{ "가입 코드 받기" if mode == "signup" else "코드 받기" }}</button>
+      </form>
+    {% endif %}
+
+    {% if mode == "signup" and use_google %}
+      <p class="subtle" style="font-size: var(--text-xs)">Google 계정으로 가입하면 <a href="/terms" target="_blank">이용약관</a>과 <a href="/privacy" target="_blank">개인정보 수집 및 이용</a>에 동의한 것으로 봅니다.</p>
+    {% endif %}
+
+    {% if not heading %}
+      {% if mode == "login" %}
+        <p class="login-switch">계정이 없으신가요? <a href="/signup{% if next and next != '/me' %}?next={{ next | urlencode }}{% endif %}">회원가입</a></p>
+      {% else %}
+        <p class="login-switch">이미 계정이 있으신가요? <a href="/login{% if next and next != '/me' %}?next={{ next | urlencode }}{% endif %}">로그인</a></p>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  {% if use_email %}
+  <div class="stack" data-step="code" hidden>
+    <h1 style="font-size: var(--text-2xl)">인증 코드 입력</h1>
+    <p class="muted" style="font-size: var(--text-sm)"><b data-sent-to></b> 주소로 보낸 6자리 코드를 입력해 주세요. 코드는 10분 동안 유효합니다.</p>
+    <form class="stack" data-code-form novalidate>
+      <div class="field">
+        <label class="field-label" for="login-code">인증 코드</label>
+        <input class="input input--otp" id="login-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="000000">
+      </div>
+      <p class="field-error" data-error hidden></p>
+      <button class="btn btn--primary btn--block" type="submit">확인</button>
+    </form>
+    <div class="cluster" style="justify-content: space-between; font-size: var(--text-sm)">
+      <button class="link-button" type="button" data-back>이전으로</button>
+      <button class="link-button" type="button" data-resend>코드 다시 받기</button>
+    </div>
+    {% if settings.mail_backend == "outbox" %}
+      <p class="subtle" style="font-size: var(--text-xs)">로컬 실행에서는 메일 대신 <a href="/dev/outbox" target="_blank">보낸 메일함</a>에 저장됩니다.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}{% if use_google %}<script src="https://accounts.google.com/gsi/client" async data-gsi></script>{% endif %}<script src="/static/js/login.js?v={{ v }}"></script>{% endblock %}

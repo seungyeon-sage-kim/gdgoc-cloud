@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}찾을 수 없음{% endblock %}
+{% block content %}
+<section class="gate stack-lg" style="text-align: center">
+  <p class="eyebrow">404</p>
+  <h1 style="font-size: var(--text-2xl)">{{ message or "페이지를 찾을 수 없습니다" }}</h1>
+  <p class="muted">주소가 정확한지 확인해 주세요. 행사가 비공개로 전환되었을 수도 있습니다.</p>
+  <div><a class="btn btn--secondary" href="/">전체 행사 보기</a></div>
+</section>
+{% endblock %}

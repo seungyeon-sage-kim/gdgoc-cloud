@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}{{ ev.title }} 관리{% endblock %}
+{% block content %}
+<a class="back" href="/admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>전체 행사</a>
+<div class="page-head" style="margin-top: var(--space-3)">
+  <div>
+    <div class="cluster">
+      {% set state_label, state_tone = state_labels[status.state] %}
+      <span class="badge {% if state_tone %}badge--{{ state_tone }}{% endif %}">{{ state_label }}</span>
+      {% if not ev.published %}<span class="badge">비공개</span>{% endif %}
+    </div>
+    <h1 style="margin-top: var(--space-2)">{{ ev.title }}</h1>
+    <p class="muted">{{ ev.starts | datetime }}, {{ ev.venue }}</p>
+  </div>
+  <div class="cluster">
+    <a class="btn btn--secondary btn--sm" href="/events/{{ ev.id }}">행사 페이지</a>
+    <a class="btn btn--secondary btn--sm" href="/admin/events/{{ ev.id }}/edit">수정</a>
+    <form method="post" action="/admin/events/{{ ev.id }}/publish"{% if ev.published and registrations %} onsubmit="return confirm('비공개로 전환할까요? 홈과 행사 페이지에서 사라집니다. 이미 받은 티켓은 그대로 유효합니다.')"{% endif %}>
+      <input type="hidden" name="published" value="{{ '0' if ev.published else '1' }}">
+      <button class="btn {{ 'btn--secondary' if ev.published else 'btn--primary' }} btn--sm" type="submit">{{ "비공개로 전환" if ev.published else "공개하기" }}</button>
+    </form>
+  </div>
+</div>
+
+{% set notices = {
+  "created": ("info", "행사를 만들었습니다.", "공개하기를 누르기 전까지는 운영진만 볼 수 있습니다."),
+  "saved": ("info", "변경 사항을 저장했습니다.", ""),
+  "published": ("success", "행사를 공개했습니다.", "홈과 행사 페이지에서 누구나 볼 수 있습니다."),
+  "hidden": ("info", "행사를 비공개로 전환했습니다.", "이미 받은 티켓은 그대로 유효합니다."),
+  "poster-uploaded": ("info", "포스터를 바꿨습니다.", "웹용 이미지와 링크 미리보기 이미지를 만들었습니다."),
+  "poster-invalid": ("danger", "10MB 이하의 이미지 파일만 올릴 수 있습니다.", ""),
+} %}
+{% if notice in notices %}
+  {% set tone, title, text = notices[notice] %}
+  <div class="alert alert--{{ tone }}" style="margin-bottom: var(--space-5)"><strong>{{ title }}</strong>{% if text %}&nbsp;{{ text }}{% endif %}</div>
+{% endif %}
+
+<div class="stack-lg">
+  <div class="stats">
+    <div class="stat"><p class="stat-label">신청</p><p class="stat-value">{{ counts.held }}<span class="subtle" style="font-size: var(--text-lg)"> / {{ counts.seat_limit }}</span></p><p class="stat-note">대기 {{ counts.waitlisted }}명, 취소 {{ counts.cancelled }}건</p></div>
+    <div class="stat"><p class="stat-label">발급 완료</p><p class="stat-value">{{ counts.issued }}</p><p class="stat-note">발급 중 {{ counts.pending }}</p></div>
+    <div class="stat"><p class="stat-label">입장</p><p class="stat-value">{{ counts.checked_in }}</p><p class="stat-note">참석 확인 {{ counts.confirmed }}명</p></div>
+    <div class="stat"><p class="stat-label">남은 자리</p><p class="stat-value">{{ counts.seats_free }}</p><p class="stat-note">상태: {{ state_labels[status.state][0] }}</p></div>
+  </div>
+
+  <div class="split">
+    <section class="card stack">
+      <div class="cluster" style="justify-content: space-between">
+        <h3>행사 설정</h3>
+        <a class="btn btn--ghost btn--sm" href="/admin/events/{{ ev.id }}/edit">수정</a>
+      </div>
+      <dl class="kv">
+        <dt>주소</dt><dd>/events/{{ ev.id }}</dd>
+        <dt>신청 기간</dt><dd>{{ ev.opens | datetime }} ~ {{ ev.closes | datetime }}</dd>
+        <dt>정원</dt><dd>{{ ev.seat_limit }}명 (대기 최대 {{ ev.waitlist_limit }}명)</dd>
+        <dt>참석 확인 마감</dt><dd>{{ ev.deadline | datetime }}</dd>
+        <dt>행사 시간</dt><dd>{{ ev.starts | datetime }} ~ {{ ev.ends | clock }}</dd>
+      </dl>
+    </section>
+
+    <section class="card stack" data-poster-card>
+      <div class="cluster" style="justify-content: space-between">
+        <h3>행사 포스터</h3>
+      </div>
+      {% if poster %}
+        <img src="{{ poster }}" alt="현재 포스터" style="border-radius: var(--radius-md); max-height: 320px; object-fit: contain; width: 100%; background: var(--surface-sunken)">
+      {% else %}
+        <div class="card--sunken empty" style="border-radius: var(--radius-md)">아직 포스터가 없습니다. 기본 커버가 표시됩니다.</div>
+      {% endif %}
+      <form class="cluster" method="post" action="/admin/events/{{ ev.id }}/poster" enctype="multipart/form-data">
+        <label class="btn btn--secondary">포스터 선택<input type="file" name="file" accept="image/*" hidden data-file></label>
+        <span class="muted" style="flex: 1; min-width: 0; font-size: var(--text-sm)" data-file-name>선택한 파일 없음</span>
+        <button class="btn btn--primary" type="submit">올리기</button>
+      </form>
+    </section>
+  </div>
+
+  <div>
+    <section class="card stack">
+      <h3>대기 명단과 참석 확인</h3>
+      <p class="muted" style="font-size: var(--text-sm)">
+        정원이 차면 이후 신청은 대기 명단에 들어갑니다. 취소가 생기면 대기 1번에게 자동으로 자리가 배정되고 메일이 발송됩니다.
+        {{ ev.deadline | datetime }}까지 참석 확인을 하지 않은 자리는 자동으로 취소되어 대기 중인 분께 넘어갑니다.
+      </p>
+    </section>
+  </div>
+
+  <section class="stack">
+    <div class="cluster" style="justify-content: space-between">
+      <h2>신청자 <span class="subtle" style="font-weight: 500">{{ registrations | length }}</span></h2>
+      <a class="btn btn--secondary btn--sm" href="/admin/events/{{ ev.id }}/registrations.csv">CSV 내려받기</a>
+    </div>
+    {% if registrations %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>신청 번호</th><th>이름</th><th>이메일</th><th>소속</th><th>상태</th><th>신청</th><th>입장</th></tr></thead>
+          <tbody>
+            {% for reg in registrations %}
+              {% set label, tone = ticket_badge(reg, ev) %}
+              <tr>
+                <td class="mono"><a href="/t/{{ reg.id }}">{{ reg.code }}</a></td>
+                <td>{{ reg.name }}</td>
+                <td class="muted">{{ reg.email }}</td>
+                <td class="muted">{{ reg.affiliation or "—" }}</td>
+                <td><span class="badge {% if tone %}badge--{{ tone }}{% endif %}">{{ label }}</span></td>
+                <td class="muted">{{ reg.created_at | time }}</td>
+                <td>{% if reg.checked_in_at %}<span class="badge badge--success">{{ reg.checked_in_at | time }}</span>{% else %}<span class="subtle">—</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="card empty">아직 신청자가 없습니다.</div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelector("[data-file]").addEventListener("change", (event) => {
+    document.querySelector("[data-file-name]").textContent = event.target.files[0]?.name || "선택한 파일 없음";
+  });
+</script>
+{% endblock %}

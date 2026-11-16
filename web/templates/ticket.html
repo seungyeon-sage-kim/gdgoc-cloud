@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ "지난 티켓" if ended else "내 티켓" }}{% endblock %}
+{% block content %}
+{% set label, tone = ticket_badge(reg, ev) %}
+{% set start = ev.starts %}
+{% set over = ended or reg.status == "cancelled" %}
+{% set closed = over or reg.checked_in_at %}
+<div class="pass-page" data-ticket
+     data-id="{{ reg.id }}" data-event-id="{{ ev.id }}" data-status="{{ reg.status }}" data-checked-in="{{ 'true' if reg.checked_in_at else 'false' }}" data-closed="{{ 'true' if over else 'false' }}" data-confirmed="{{ 'true' if reg.confirmed_at else 'false' }}" data-deadline="{{ ev.confirm_deadline }}">
+  <div class="pass-top">
+    <a class="back" href="{% if me %}/me{% if over %}?view=past{% endif %}{% else %}/events/{{ ev.id }}{% endif %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>{{ "마이페이지" if me else "행사 페이지" }}</a>
+    <h1 class="pass-heading">{{ "지난 티켓" if ended else "내 티켓" }}</h1>
+  </div>
+
+  {% if closed %}
+  {% elif reg.status in ("pending", "issued") and not reg.checked_in_at %}
+  <section class="pass-card" data-confirm-note>
+    {% if reg.confirmed_at %}
+      <div class="pass-card-head"><p class="pass-card-title">참석 확인 완료</p><span class="badge badge--success">확인됨</span></div>
+      <p class="muted">행사 당일 입구에서 QR 코드를 보여 주세요.</p>
+    {% elif can_confirm %}
+      <div class="pass-card-head"><p class="pass-card-title">참석 확인</p><span class="badge badge--warning">필요</span></div>
+      <p class="muted">{{ ev.deadline | datetime }}까지 참석 확인이 필요합니다. 확인하지 않은 자리는 대기 중인 분께 넘어갑니다.</p>
+      <button class="btn btn--primary btn--block" type="button" data-confirm>참석 확인</button>
+    {% else %}
+      <p class="pass-card-title">참석 확인 기한 종료</p>
+      <p class="muted">{{ ev.deadline | datetime }}에 참석 확인이 마감되었습니다.</p>
+    {% endif %}
+  </section>
+  {% elif reg.status == "waitlisted" %}
+  <section class="pass-card">
+    <div class="pass-card-head"><p class="pass-card-title">대기 중</p><span class="badge badge--warning" data-position>대기 {{ position }}번</span></div>
+    <p class="muted">취소 자리가 생기면 신청 순서대로 자동 배정되고, 이 페이지에 QR 코드가 나타납니다. 배정 후 {{ ev.deadline | datetime }}까지 참석 확인이 필요합니다.</p>
+  </section>
+  {% endif %}
+
+  <article class="pass {% if reg.status == 'cancelled' %}pass--void{% endif %}" aria-label="입장 티켓">
+    <header class="pass-head" data-hue="{{ event_hue(ev.id) }}">
+      <span class="pass-org">{{ settings.site_name }}</span>
+      <span class="pass-date">{{ start | date }}</span>
+    </header>
+
+    <div class="pass-main">
+      <p class="pass-title">{{ ev.title }}</p>
+      <dl class="pass-fields">
+        <div><dt>참가자</dt><dd>{{ reg.name }}</dd></div>
+        <div><dt>티켓</dt><dd>일반 참가</dd></div>
+        <div><dt>날짜</dt><dd>{% if ended %}{{ start.year }}년 {{ start.month }}월 {{ start.day }}일{% else %}{{ start | date }}{% endif %}</dd></div>
+        <div><dt>시간</dt><dd class="nowrap">{{ start | clock }} ~ {{ ev.ends | clock }}</dd></div>
+        <div class="pass-field--wide"><dt>장소</dt><dd>{{ ev.venue }}</dd></div>
+      </dl>
+    </div>
+
+    <div class="pass-stub">
+      {% if closed %}
+        <p class="pass-outcome{% if tone %} pass-outcome--{{ tone }}{% endif %}">{{ label }}</p>
+        <p class="pass-result">
+          {% if reg.checked_in_at %}{{ reg.checked_in_at | datetime }} 입장
+          {% elif reg.status == "cancelled" %}{% if reg.cancelled_at %}{{ reg.cancelled_at | datetime }}에 {% endif %}취소한 신청입니다.
+          {% elif reg.status == "waitlisted" %}대기 중에 행사가 종료되었습니다.
+          {% else %}입장 기록이 없습니다.{% endif %}
+        </p>
+        <span class="ticket-code">{{ reg.code }}</span>
+      {% else %}
+        <span class="badge {% if tone %}badge--{{ tone }}{% endif %}">{{ label }}</span>
+        <div class="ticket-qr" data-qr>
+          {% if reg.status == "issued" %}
+            <img src="/t/{{ reg.id }}/qr.svg" alt="입장 QR 코드">
+          {% elif reg.status == "pending" %}
+            <div class="ticket-qr-wait">
+              <span class="spinner" aria-hidden="true"></span>
+              <span>티켓 발급 중</span>
+            </div>
+          {% elif reg.status == "waitlisted" %}
+            <div class="ticket-qr-wait">
+              <span class="pass-position" data-position>대기 {{ position }}번</span>
+              <span>자리가 나면 자동 배정</span>
+            </div>
+          {% endif %}
+        </div>
+        <span class="ticket-code">{{ reg.code }}</span>
+        <span class="pass-hint">{% if reg.status == "waitlisted" %}배정되면 이 자리에 입장용 QR 코드가 나타납니다{% else %}{{ "입구에서 이 QR 코드를 보여 주세요" if reg.confirmed_at else "참석 확인 후 입구에서 이 QR 코드를 보여 주세요" }}{% endif %}</span>
+      {% endif %}
+    </div>
+  </article>
+
+  {% if closed %}
+  <a class="btn btn--secondary btn--block" href="/events/{{ ev.id }}">행사 페이지</a>
+  {% else %}
+  <div class="pass-actions">
+    <a class="btn btn--secondary" href="/events/{{ ev.id }}/calendar.ics">캘린더에 추가</a>
+    <button class="btn btn--secondary" type="button" data-copy>티켓 링크 복사</button>
+  </div>
+  {% endif %}
+
+  <p class="pass-note" data-pending-note {% if reg.status != "pending" or closed %}hidden{% endif %}>
+    신청이 접수되었습니다. 티켓을 발급하고 있으며 보통 몇 초 안에 QR 코드가 나타납니다.
+  </p>
+
+
+  {% if not closed and can_cancel %}
+  <p class="pass-cancel">참석이 어려우신가요? <button type="button" data-cancel>{{ "대기 취소" if reg.status == "waitlisted" else "신청 취소" }}</button></p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/ticket.js?v={{ v }}"></script>{% endblock %}

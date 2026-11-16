@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}보낸 메일함{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>보낸 메일함</h1>
+    <p class="muted">로컬 실행 전용입니다. 서비스가 보낸 메일이 실제로 발송되지 않고 여기에 저장됩니다 (MAIL_BACKEND=outbox).</p>
+  </div>
+</div>
+{% if emails %}
+  <div class="stack">
+    {% for email in emails %}
+      <article class="card stack">
+        <div class="cluster" style="justify-content: space-between">
+          <b>{{ email.subject }}</b>
+          <span class="subtle" style="font-size: var(--text-xs)">{{ email.sent_at | time }}</span>
+        </div>
+        <p class="muted" style="font-size: var(--text-sm)">받는 사람: {{ email.to }}</p>
+        <pre class="mail-body">{{ email.body }}</pre>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty">아직 보낸 메일이 없습니다.</div>
+{% endif %}
+{% endblock %}

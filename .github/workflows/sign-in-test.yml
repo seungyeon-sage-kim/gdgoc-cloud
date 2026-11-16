@@ -1,0 +1,39 @@
+# Lab step 15: does Google Cloud trust this repository? Run it by hand (Actions → Sign-in test
+# → Run workflow) after building the keyless sign-in. It only signs in and reads, so a mistake
+# in the trust shows up in a minute, not after the whole CI/CD run.
+#
+# Uses the same repository variables as ci.yml: WIF_PROVIDER, DEPLOYER_SA, GCP_PROJECT_ID.
+
+name: Sign-in test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sign-in:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # lets GitHub issue the token that Google Cloud checks
+    steps:
+      - name: What GitHub says about this run
+        run: |
+          echo "repository_id: ${{ github.repository_id }}"
+          echo "ref:           ${{ github.ref }}"
+
+      - id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Signed in as the deployer
+        run: gcloud auth list --filter=status:ACTIVE --format='value(account)'
+
+      - name: The deployer can see the Cloud Run services
+        run: gcloud run services list --project "${{ vars.GCP_PROJECT_ID }}" --region "${{ vars.GCP_REGION || 'asia-northeast3' }}" --format='value(metadata.name)'

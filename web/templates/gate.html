@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ "체크인" if role == "staff" else "관리" }}{% endblock %}
+{% block content %}
+<section class="gate card stack-lg">
+    <div class="stack">
+      <h1 style="font-size: var(--text-2xl)">접근 권한이 없습니다</h1>
+      <p class="muted" style="font-size: var(--text-sm)">
+        {{ me }} 계정은 {{ "체크인 스태프" if role == "staff" else "운영진" }} 목록에 없습니다.
+        권한이 필요하면 운영진에게 이메일 추가를 요청해 주세요.
+      </p>
+    </div>
+    <form method="post" action="/logout"><button class="btn btn--secondary btn--block" type="submit">다른 계정으로 로그인</button></form>
+</section>
+{% endblock %}

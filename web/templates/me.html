@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cover, event_card with context %}
+{% block title %}{{ "지난 티켓" if tab == "past" else "내 티켓" }}{% endblock %}
+{% block content %}
+{% include "_me_head.html" %}
+
+{% if tab == "past" %}
+  {% if past %}
+    <ul class="my-list">
+      {% for row in past %}{% include "_my_row.html" %}{% endfor %}
+    </ul>
+  {% else %}
+    <section class="me-empty card">
+      <h2 class="me-title">지난 티켓이 없습니다</h2>
+      <p>참가한 행사와 취소한 신청이 이곳에 표시됩니다.</p>
+      <a class="btn btn--primary btn--sm" href="/">행사 둘러보기</a>
+    </section>
+  {% endif %}
+{% else %}
+  <div class="stack-lg">
+    {% if upcoming %}
+      <ul class="my-list">
+        {% for row in upcoming %}{% include "_my_row.html" %}{% endfor %}
+      </ul>
+    {% else %}
+      <section class="me-empty card">
+        <h2 class="me-title">예정된 티켓이 없습니다</h2>
+        <p>행사를 신청하면 QR 티켓이 이곳에 표시됩니다.</p>
+        <a class="btn btn--primary btn--sm" href="/">행사 둘러보기</a>
+      </section>
+    {% endif %}
+
+    {% if suggested %}
+      <section class="stack">
+        <h2 class="me-title">신청할 수 있는 행사</h2>
+        <div class="event-grid">
+          {% for item in suggested %}{{ event_card(item) }}{% endfor %}
+        </div>
+      </section>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}체크인{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>체크인</h1>
+    <p class="muted">입장을 확인할 행사를 선택해 주세요.</p>
+  </div>
+</div>
+
+{% if events %}
+  <ul class="pick-list">
+    {% for ev in events %}
+      <li>
+        <a class="pick" href="/checkin/{{ ev.id }}">
+          <span class="info-tile info-tile--date" aria-hidden="true"><small>{{ ev.starts.month }}월</small><b>{{ ev.starts.day }}</b></span>
+          <span class="pick-text"><b>{{ ev.title }}</b><span>{{ ev.starts | datetime }}, {{ ev.venue }}</span></span>
+          <span class="btn btn--secondary btn--sm">체크인 시작</span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="card empty">체크인할 행사가 없습니다. 공개된 행사 중 종료 후 하루가 지나지 않은 행사가 표시됩니다.</div>
+{% endif %}
+{% endblock %}

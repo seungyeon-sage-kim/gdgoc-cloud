@@ -1,0 +1,4 @@
+# Left out of git archive, which makes the student zip: tracking notes, and Dependabot's
+# weekly pull requests, which would run full CI in every student's repo during the lab
+audit/ export-ignore
+.github/dependabot.yml export-ignore

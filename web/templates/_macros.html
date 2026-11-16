@@ -1,0 +1,48 @@
+{# Shared pieces: the cover an event shows until it has a poster, and a few line icons. #}
+
+{# The organizer's poster, or one fixed cover for every event that has none #}
+{% macro cover(ev, poster_url=None, cls="") -%}
+{% if poster_url %}
+<img class="cover {{ cls }}" src="{{ poster_url }}" alt="{{ ev.title }} 포스터" loading="lazy">
+{% else %}
+<div class="cover cover--brand {{ cls }}" aria-hidden="true">
+  <span class="cover-brand">{{ settings.site_name }}</span>
+  <span class="cover-org">{{ settings.organizer }}</span>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro icon(name) -%}
+<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == "pin" %}<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/>
+{%- elif name == "users" %}<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 14.6c1.6.7 2.6 2.2 3 4.4"/>
+{%- elif name == "clock" %}<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>
+{%- elif name == "ticket" %}<path d="M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5V14a2 2 0 0 0 0-4Z"/><path d="M14 6v12" stroke-dasharray="2 2"/>
+{%- elif name == "arrow" %}<path d="M7 17 17 7M9 7h8v8"/>
+{%- elif name == "back" %}<path d="M15 5l-7 7 7 7"/>
+{%- elif name == "search" %}<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>
+{%- elif name == "calendar" %}<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>
+{%- endif -%}
+</svg>
+{%- endmacro %}
+
+{# One event on the home page and on 마이페이지. Expects `item` from card() in main.py. #}
+{% macro event_card(item) -%}
+  {% set ev, status = item.ev, item.status %}
+  {% set label, tone = state_labels[status.state] %}
+  <a class="event-tile" href="/events/{{ ev.id }}">
+    <div class="event-tile-cover">{{ cover(ev, item.poster) }}</div>
+    <div class="event-tile-body">
+      <p class="event-tile-when">{{ ev.starts | date }} {{ ev.starts | clock }}</p>
+      <h3 class="event-tile-title">{{ ev.title }}</h3>
+      <p class="event-tile-meta">{{ icon("pin") }}<span>{{ ev.venue }}</span></p>
+      <div class="event-tile-foot">
+        <span class="badge {% if tone %}badge--{{ tone }}{% endif %}">{{ label }}</span>
+        {% if status.state == "open" %}<span>{{ status.seats_left }}석 남음</span>
+        {% elif status.state == "waitlist" %}<span>대기 {{ status.waitlisted }}명</span>
+        {% elif status.state == "upcoming" %}<span>{{ ev.opens | date }} 오픈</span>
+        {% elif status.state == "ended" and status.held %}<span>{{ status.held }}명 참가</span>{% endif %}
+      </div>
+    </div>
+  </a>
+{%- endmacro %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<section class="gate stack-lg" style="text-align: center">
+  <h1 style="font-size: var(--text-2xl)">{{ title }}</h1>
+  <p class="muted">{{ text }}</p>
+  <div><a class="btn btn--secondary" href="/">전체 행사 보기</a></div>
+</section>
+{% endblock %}

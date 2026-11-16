@@ -1,0 +1,16 @@
+{# The top of 마이페이지: who is signed in, and the tabs. Expects `profile`, `tab`, `upcoming_count`, `past_count`. #}
+<div class="me-head">
+  <div>
+    <h1>마이페이지</h1>
+    <p class="me-who">
+      {% if profile.name %}<b>{{ profile.name }}</b>{% endif %}
+      {% if profile.affiliation %}<span>{{ profile.affiliation }}</span>{% endif %}
+      <span>{{ profile.email }}</span>
+    </p>
+  </div>
+  <nav class="segmented" aria-label="마이페이지 메뉴">
+    <a href="/me" {% if tab == "tickets" %}aria-current="page"{% endif %}>예정된 티켓{% if upcoming_count %}<span class="me-count">{{ upcoming_count }}</span>{% endif %}</a>
+    <a href="/me?view=past" {% if tab == "past" %}aria-current="page"{% endif %}>지난 티켓{% if past_count %}<span class="me-count">{{ past_count }}</span>{% endif %}</a>
+    <a href="/me/profile" {% if tab == "profile" %}aria-current="page"{% endif %}>프로필</a>
+  </nav>
+</div>

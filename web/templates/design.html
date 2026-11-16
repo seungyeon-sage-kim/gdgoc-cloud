@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}디자인 시스템{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Design system</p>
+    <h1 style="margin-top: 6px">디자인 시스템</h1>
+    <p class="muted" style="max-width: 60ch">모든 화면은 <code class="mono">tokens.css</code>의 값과 <code class="mono">components.css</code>의 부품만으로 만듭니다. 색 하나를 바꾸면 모든 화면이 함께 바뀌고, 다크 모드는 토큰 교체만으로 동작합니다.</p>
+  </div>
+</div>
+
+<section class="ds-section">
+  <h2>색</h2>
+  <p class="muted" style="font-size: var(--text-sm)">따뜻한 종이색 바탕, 잉크색 글자, 강조색은 파랑 하나. 상태 색 세 가지는 의미가 있을 때만 씁니다.</p>
+  <div class="swatches">
+    {% for name, var in [("Paper", "--paper"), ("Surface", "--surface"), ("Sunken", "--surface-sunken"), ("Ink", "--ink"), ("Ink muted", "--ink-muted"), ("Ink subtle", "--ink-subtle"), ("Accent", "--accent"), ("Accent soft", "--accent-soft"), ("Success", "--success"), ("Warning", "--warning"), ("Danger", "--danger")] %}
+      <div class="swatch">
+        <div class="swatch-chip" style="background: var({{ var }})"></div>
+        <p class="swatch-name">{{ name }}</p>
+        <p class="swatch-var">{{ var }}</p>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="ds-section">
+  <h2>글자</h2>
+  <div class="card stack">
+    <p style="font-size: var(--text-4xl); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05">Cloud Run 실전 나이트</p>
+    <p style="font-size: var(--text-3xl); font-weight: 700; letter-spacing: var(--tracking-display)">제목 32 — Pretendard Bold</p>
+    <p style="font-size: var(--text-xl); font-weight: 700">소제목 20</p>
+    <p>본문 15 — 읽기 편한 줄 간격 1.55, 숫자는 고정 폭(tabular)으로 정렬됩니다. 0123456789</p>
+    <p class="muted" style="font-size: var(--text-sm)">보조 13 — 설명과 힌트</p>
+    <p class="mono">K7Q-4XM — 코드와 식별자는 고정폭 글꼴</p>
+  </div>
+</section>
+
+<section class="ds-section">
+  <h2>버튼</h2>
+  <div class="ds-row">
+    <button class="btn btn--primary" type="button">신청하기</button>
+    <button class="btn btn--secondary" type="button">티켓 링크 복사</button>
+    <button class="btn btn--ghost" type="button">신청 취소</button>
+    <button class="btn btn--danger" type="button">삭제</button>
+    <button class="btn btn--primary" type="button" disabled>비활성</button>
+    <button class="btn btn--primary" type="button"><span class="spinner" aria-hidden="true"></span> 신청하는 중</button>
+    <button class="btn btn--secondary btn--sm" type="button">작은 버튼</button>
+  </div>
+</section>
+
+<section class="ds-section">
+  <h2>입력</h2>
+  <div class="split">
+    <div class="field">
+      <label class="field-label" for="ds-name">이름</label>
+      <input class="input" id="ds-name" placeholder="김연세">
+      <span class="field-hint">도움말은 입력칸 아래에 짧게 둡니다.</span>
+    </div>
+    <div class="field">
+      <label class="field-label" for="ds-email">이메일</label>
+      <input class="input" id="ds-email" value="wrong-email" aria-invalid="true">
+      <span class="field-error">이메일 형식을 확인해 주세요.</span>
+    </div>
+    <div class="field">
+      <label class="field-label" for="ds-code">티켓 코드</label>
+      <input class="input input--code" id="ds-code" placeholder="K7Q-4XM">
+    </div>
+  </div>
+</section>
+
+<section class="ds-section">
+  <h2>배지와 알림</h2>
+  <div class="ds-row">
+    <span class="badge">기본</span>
+    <span class="badge badge--accent">발급 중</span>
+    <span class="badge badge--success">신청 가능</span>
+    <span class="badge badge--warning">오픈 예정</span>
+    <span class="badge badge--danger">마감</span>
+  </div>
+  <div class="stack">
+    <div class="alert alert--info"><strong>안내</strong>&nbsp;티켓은 별도 서비스가 만들고 있어요.</div>
+    <div class="alert alert--success"><strong>완료</strong>&nbsp;입장이 확인되었습니다.</div>
+    <div class="alert alert--warning"><strong>주의</strong>&nbsp;남은 자리가 얼마 없습니다.</div>
+    <div class="alert alert--danger"><strong>오류</strong>&nbsp;모든 자리가 마감되었습니다.</div>
+  </div>
+</section>
+
+<section class="ds-section">
+  <h2>좌석 미터와 카운트다운</h2>
+  <div class="split">
+    <div class="card stack">
+      <div class="meter">
+        <div class="meter-head"><span class="meter-value">18<small> / 30석 남음</small></span></div>
+        <div class="meter-track"><div class="meter-fill" style="width: 40%"></div></div>
+      </div>
+      <div class="meter meter--low">
+        <div class="meter-head"><span class="meter-value">3<small> / 30석 남음</small></span></div>
+        <div class="meter-track"><div class="meter-fill" style="width: 90%"></div></div>
+      </div>
+      <div class="meter meter--full">
+        <div class="meter-head"><span class="meter-value">0<small> / 30석 남음</small></span></div>
+        <div class="meter-track"><div class="meter-fill" style="width: 100%"></div></div>
+      </div>
+    </div>
+    <div class="card stack">
+      <div class="countdown">
+        <div class="countdown-unit"><span class="countdown-num">0</span><span class="countdown-label">일</span></div>
+        <div class="countdown-unit"><span class="countdown-num">00</span><span class="countdown-label">시간</span></div>
+        <div class="countdown-unit"><span class="countdown-num">04</span><span class="countdown-label">분</span></div>
+        <div class="countdown-unit"><span class="countdown-num">59</span><span class="countdown-label">초</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ds-section">
+  <h2>숫자 카드</h2>
+  <div class="stats">
+    <div class="stat"><p class="stat-label">신청</p><p class="stat-value">27</p><p class="stat-note">정원 30</p></div>
+    <div class="stat"><p class="stat-label">발급 완료</p><p class="stat-value">26</p><p class="stat-note">발급 중 1</p></div>
+    <div class="stat"><p class="stat-label">입장</p><p class="stat-value">18</p><p class="stat-note">발급된 티켓 중</p></div>
+    <div class="stat"><p class="stat-label">남은 자리</p><p class="stat-value">3</p><p class="stat-note">상태: 신청 중</p></div>
+  </div>
+</section>
+
+<section class="ds-section">
+  <h2>티켓</h2>
+  <div style="max-width: 400px">
+  <article class="pass">
+    <header class="pass-head" data-hue="{{ event_hue(ev.id) }}">
+      <span class="pass-org">{{ settings.site_name }}</span>
+      <span class="pass-date">11.20 (금) 19:00</span>
+    </header>
+    <div class="pass-main">
+      <p class="pass-title">{{ ev.title }}</p>
+      <dl class="pass-fields">
+        <div><dt>참가자</dt><dd>김연세</dd></div>
+        <div><dt>티켓</dt><dd>일반 참가</dd></div>
+        <div><dt>일시</dt><dd>{{ ev.starts | date }} {{ ev.starts | clock }}</dd></div>
+        <div><dt>장소</dt><dd>{{ ev.venue }}</dd></div>
+      </dl>
+    </div>
+    <div class="pass-stub">
+      <span class="badge badge--success">발급 완료</span>
+      <div class="ticket-qr"><div class="skeleton" style="width: 100%; height: 100%"></div></div>
+      <span class="ticket-code">K7Q-4XM</span>
+      <span class="pass-hint">입구에서 이 QR 코드를 보여 주세요</span>
+    </div>
+  </article>
+  </div>
+</section>
+
+<section class="ds-section">
+  <h2>체크인 결과</h2>
+  <div class="split">
+    <div class="result result--ok">
+      <div class="result-head"><span class="result-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg></span><span>입장 완료</span><span class="result-time">19:02</span></div>
+      <div class="result-body"><p class="result-title">김연세</p><p class="muted">컴퓨터과학과, K7Q-4XM</p></div>
+    </div>
+    <div class="result result--bad">
+      <div class="result-head"><span class="result-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span><span>입장 불가</span><span class="result-time">19:03</span></div>
+      <div class="result-body"><p class="result-title">유효하지 않은 QR</p><p class="muted">서명이 맞지 않습니다.</p></div>
+    </div>
+  </div>
+</section>
+{% endblock %}

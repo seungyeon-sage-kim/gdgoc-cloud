@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ ev.title }} 체크인{% endblock %}
+{% block content %}
+<a class="back" href="/checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>행사 선택</a>
+<div class="page-head" style="margin-top: var(--space-3)">
+  <div>
+    <h1>{{ ev.title }}</h1>
+    <p class="muted">{{ ev.starts | datetime }}, {{ ev.venue }}. QR을 비추거나 신청 번호를 입력해 주세요.</p>
+  </div>
+  <div class="cluster">
+    <span class="badge badge--accent badge--plain">입장 <b data-count-in style="margin: 0 2px">{{ counts.checked_in }}</b> / <span data-count-issued>{{ counts.issued }}</span></span>
+  </div>
+</div>
+
+<div class="checkin" data-checkin data-event-id="{{ ev.id }}">
+  <div class="checkin-result">
+    <div class="result" data-result aria-live="assertive">
+      <div class="result-head"><span class="result-icon" data-result-icon></span><span data-result-label>스캔 대기</span><span class="result-time" data-result-time></span></div>
+      <div class="result-body">
+        <p class="result-title" data-result-title>티켓을 스캔해 주세요</p>
+        <p class="muted" data-result-detail>확인 결과가 여기에 표시됩니다.</p>
+        <button class="link-button result-undo" type="button" data-result-undo hidden>입장 취소</button>
+      </div>
+    </div>
+  </div>
+  <section class="checkin-scan stack-lg">
+    <div class="scanner" data-scanner>
+      <video playsinline muted data-video hidden></video>
+      <div class="scanner-frame" data-frame hidden></div>
+      <div class="scanner-idle" data-idle>
+        <p style="font-weight: 600">카메라로 QR 스캔</p>
+        <button class="btn btn--primary" type="button" data-start>카메라 켜기</button>
+        <p style="font-size: var(--text-xs); opacity: .7" data-camera-note></p>
+      </div>
+    </div>
+
+    <form class="cluster" data-code-form style="align-items: flex-end">
+      <div class="field" style="flex: 1; min-width: 200px">
+        <label class="field-label" for="code">신청 번호</label>
+        <input class="input input--code" id="code" name="code" placeholder="K7Q-4XM" autocomplete="off" required>
+      </div>
+      <button class="btn btn--secondary" type="submit">확인</button>
+    </form>
+  </section>
+  <section class="checkin-lists stack-lg">
+    <div class="card stack">
+      <h3>최근 확인</h3>
+      <ul class="list-plain" data-recent><li class="subtle">아직 없음</li></ul>
+    </div>
+    <div class="card stack">
+      <h3>명단에서 찾기</h3>
+      <input class="input" type="search" placeholder="이름 또는 신청 번호" aria-label="명단 검색" data-guest-search>
+      <ul class="guest-list" data-guests><li class="subtle">불러오는 중</li></ul>
+    </div>
+  </section>
+</div>
+
+<dialog class="sheet" data-door-dialog aria-labelledby="door-name">
+  <div class="sheet-body stack">
+    <p class="door-label">입장 처리</p>
+    <div>
+      <p class="door-name" id="door-name" data-door-name></p>
+      <p class="muted" data-door-about></p>
+    </div>
+    <p class="door-note" data-door-note hidden>행사 당일이 아닙니다. {{ ev.starts | date }} 행사입니다.</p>
+    <div class="door-actions">
+      <button class="btn btn--secondary" type="button" data-door-cancel>취소</button>
+      <button class="btn btn--primary" type="button" data-door-confirm autofocus>입장 처리</button>
+    </div>
+  </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/vendor/jsQR.js?v={{ v }}"></script><script src="/static/js/checkin.js?v={{ v }}"></script>{% endblock %}

@@ -1,0 +1,17 @@
+{# One registration on 마이페이지. Expects `row` = {reg, ev, poster}; `tab` says which list it is in. #}
+{% set reg, ev = row.reg, row.ev %}
+{% set label, tone = ticket_badge(reg, ev) %}
+<li>
+  <a class="my-row{% if reg.status == 'cancelled' %} my-row--void{% endif %}" href="/t/{{ reg.id }}">
+    {{ cover(ev, row.poster, "cover--thumb") }}
+    <span class="my-row-text">
+      <b class="my-row-title">{{ ev.title }}</b>
+      <span>{% if tab == "past" %}{{ ev.starts.year }}년 {% endif %}{{ ev.starts | datetime }}</span>
+      <span>{{ ev.venue }}</span>
+    </span>
+    <span class="my-row-end">
+      <span class="badge{% if tone %} badge--{{ tone }}{% endif %}">{{ label }}</span>
+      {% if tab != "past" %}<span class="mono subtle">{{ reg.code }}</span>{% endif %}
+    </span>
+  </a>
+</li>

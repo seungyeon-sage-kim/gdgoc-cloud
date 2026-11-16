@@ -1,0 +1,33 @@
+# Copy to terraform.tfvars and fill in
+project_id     = "your-project-id"
+github_repo_id = "123456789" # gh api repos/OWNER/gdgoc-tickets -q .id
+
+# Events are created on the site's admin pages, not here.
+
+# Who runs events and who checks people in (they sign in with a code sent by email)
+admin_emails = ["you@example.com"]
+# staff_emails = ["door-staff@example.com"]
+
+# Email. Until it is on, nothing is sent and organizers find their sign-in code
+# in Cloud Logging. To turn it on: verify a domain with Resend, create an API key, then
+#   gcloud secrets versions add smtp-password --data-file=-
+#   gcloud secrets versions add mail-from --data-file=-      (the address emails come from)
+# mail_enabled = true
+
+# Off by default (the core lab). true adds reCAPTCHA, monitoring and backups
+# production_extras = true
+
+# Alerts and bot protection (see docs/ci-setup.md)
+# alert_email      = "you@example.com"
+# extra_web_hosts  = ["web-xxxxxxxxxx-du.a.run.app"]   # gcloud run services describe web --format 'value(status.url)'
+
+# Optional
+# web_service_name = "web"   # part of the public address; if changed, also: gh variable set WEB_SERVICE
+# google_client_id = "1234567890-abc.apps.googleusercontent.com"   # Sign in with Google (docs/guide.ko.md, chapter 8)
+# region           = "asia-northeast3"
+# allow_public_web = false   # only callers with run.invoker (CI's smoke test then needs an identity token)
+# prewarm          = { instances = 3, minutes_before = 15, minutes_after = 60 }
+
+# Load-test lab (docs/load-test.md). Put these back to the defaults afterwards
+# signups_per_minute_per_ip = 5000   # the test sends every signup from one machine
+# worker_delay_ms           = 2000   # a slow email provider, so the backlog is visible

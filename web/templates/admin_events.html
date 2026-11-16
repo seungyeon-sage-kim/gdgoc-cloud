@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}행사 관리{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>행사 관리</h1>
+    <p class="muted">행사를 만들고, 공개하고, 신청 현황을 확인합니다.</p>
+  </div>
+  <div class="cluster">
+    <a class="btn btn--ghost btn--sm" href="/admin/system">시스템 상태</a>
+    <a class="btn btn--primary btn--sm" href="/admin/events/new">새 행사 만들기</a>
+  </div>
+</div>
+
+<div class="stack-lg">
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>행사</th><th>일시</th><th>상태</th><th>신청</th><th>공개</th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+            {% set ev, status = row.ev, row.status %}
+            {% set label, tone = state_labels[status.state] %}
+            <tr>
+              <td><a href="/admin/events/{{ ev.id }}"><b>{{ ev.title }}</b></a><br><span class="subtle mono" style="font-size: var(--text-xs)">{{ ev.id }}</span></td>
+              <td class="muted">{{ ev.starts | datetime }}</td>
+              <td><span class="badge {% if tone %}badge--{{ tone }}{% endif %}">{{ label }}</span></td>
+              <td>{{ status.held }} / {{ status.seat_limit }}{% if status.waitlisted %}<span class="subtle">, 대기 {{ status.waitlisted }}</span>{% endif %}</td>
+              <td>{% if ev.published %}공개{% else %}<span class="subtle">비공개</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card empty">아직 행사가 없습니다. 새 행사 만들기로 첫 행사를 등록해 주세요.</div>
+  {% endif %}
+
+</div>
+{% endblock %}

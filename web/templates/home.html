@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cover, event_card, icon with context %}
+{% block content %}
+<div class="discover-head">
+  <div>
+    <h1>행사 둘러보기</h1>
+    <p class="muted">행사를 찾아 신청하고 QR 티켓으로 입장하세요.</p>
+  </div>
+  <a class="btn btn--secondary btn--sm" href="/calendar.ics">{{ icon("calendar") }}캘린더 구독</a>
+</div>
+
+<form class="toolbar" action="/" method="get" role="search">
+  {% if past %}<input type="hidden" name="view" value="past">{% endif %}
+  <label class="search">
+    {{ icon("search") }}
+    <input type="search" name="q" value="{{ q }}" placeholder="행사 이름, 주제, 장소로 검색" aria-label="행사 검색">
+  </label>
+  <nav class="segmented" aria-label="행사 보기">
+    <a href="/{% if q %}?q={{ q | urlencode }}{% endif %}" {% if not past %}aria-current="page"{% endif %}>예정</a>
+    <a href="/?view=past{% if q %}&q={{ q | urlencode }}{% endif %}" {% if past %}aria-current="page"{% endif %}>지난 행사</a>
+  </nav>
+  {% if past %}
+    <span class="filter-chip" aria-disabled="true">신청 가능만</span>
+  {% else %}
+    <a class="filter-chip" href="/?{% if not only_open %}open=1{% endif %}{% if q %}{% if not only_open %}&{% endif %}q={{ q | urlencode }}{% endif %}" {% if only_open %}aria-pressed="true"{% endif %}>신청 가능만</a>
+  {% endif %}
+</form>
+
+{% if q %}<p class="result-count">‘{{ q }}’ 검색 결과 {{ cards | length }}개</p>{% endif %}
+
+{% if cards %}
+  <div class="event-grid">
+    {% for item in cards %}
+      {{ event_card(item) }}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty">
+    {% if q %}
+      <b>‘{{ q }}’에 맞는 행사가 없습니다</b>
+      <span>다른 단어로 검색하거나 <a href="/{% if past %}?view=past{% endif %}">전체 목록</a>을 보세요.</span>
+    {% else %}
+      <b>{{ "지난 행사가 없습니다" if past else "예정된 행사가 없습니다" }}</b>
+      <span>{{ "끝난 행사가 이곳에 모입니다." if past else "새 행사가 열리면 이곳에 표시됩니다." }}</span>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

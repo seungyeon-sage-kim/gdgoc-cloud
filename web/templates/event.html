@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}{{ ev.title }}{% endblock %}
+{% block description %}{{ ev.starts | date }} {{ ev.starts | clock }}, {{ ev.venue }}.{% if ev.summary %} {{ ev.summary }}{% endif %}{% endblock %}
+{% block content %}
+{% from "_macros.html" import cover, icon with context %}
+{% set start = ev.starts %}
+{% set end = ev.ends %}
+<div class="event-page">
+  <div class="event-cover{% if not poster %} event-cover--fallback{% endif %}">{{ cover(ev, poster, "cover--hero") }}</div>
+
+  <div class="event-body">
+    <header class="event-head">
+      {% if ev.summary %}<p class="event-kicker">{{ ev.summary }}</p>{% endif %}
+      <h1>{{ ev.title }}</h1>
+      {% if is_admin %}<p><a class="btn btn--secondary btn--sm" href="/admin/events/{{ ev.id }}">관리</a></p>{% endif %}
+    </header>
+    {% if not ev.published %}<p class="draft-note">공개 전 미리보기입니다. 운영진만 이 페이지를 볼 수 있습니다.</p>{% endif %}
+
+    <div class="info">
+      <div class="info-row">
+        <span class="info-tile info-tile--date" aria-hidden="true"><small>{{ start.month }}월</small><b>{{ start.day }}</b></span>
+        <div class="info-text"><b>{{ start.month }}월 {{ start.day }}일 {{ weekdays[start.weekday()] }}요일</b><span>{{ start | clock }} ~ {{ end | clock }}</span></div>
+      </div>
+      <div class="info-row">
+        <span class="info-tile" aria-hidden="true">{{ icon("pin") }}</span>
+        <div class="info-text"><b>{{ ev.venue }}</b><a href="https://www.google.com/maps/search/?api=1&query={{ ev.venue | urlencode }}" target="_blank" rel="noopener">지도에서 보기</a></div>
+      </div>
+    </div>
+
+    <section class="reg" data-panel
+             data-event-id="{{ ev.id }}"
+             data-mail-ready="{{ 'true' if mail_ready else '' }}"
+             data-mine="{{ mine.id if mine else '' }}"
+             data-state="{{ status.state }}"
+             data-opens-at="{{ status.opens_at }}"
+             data-server-time="{{ status.server_time }}">
+      {% set view = "mine" if mine and status.state != "ended" else status.state %}
+      {% set cta_label, cta_on, bar_note = {
+        "upcoming": ("오픈 예정", false, "신청 오픈 전"),
+        "open": ("신청하기", true, status.seats_left ~ "석 남음"),
+        "waitlist": ("대기 신청하기", true, "대기 신청 가능"),
+        "full": ("신청 마감", false, "정원 마감"),
+        "closed": ("신청 종료", false, "신청 기간 종료"),
+        "ended": ("종료된 행사", false, "종료된 행사"),
+        "mine": ("티켓 보기", true, mine_card.bar if mine_card else ""),
+      }[view] %}
+      <h2 class="reg-head">참가 신청</h2>
+      <div class="reg-body">
+        <div class="reg-state" data-when="upcoming"{% if view != "upcoming" %} hidden{% endif %}>
+          <p class="reg-title">신청 오픈 전</p>
+          <p class="reg-text">{{ ev.opens | datetime }}에 신청이 열립니다.</p>
+          <p class="reg-countdown"><span data-countdown>0일 00:00:00</span> 남음</p>
+        </div>
+        <div class="reg-state" data-when="open"{% if view != "open" %} hidden{% endif %}>
+          <div class="ticket-row">
+            <div><b>일반 참가</b><span>선착순, <span data-seats-left>{{ status.seats_left }}</span>석 남음</span></div>
+            <b>무료</b>
+          </div>
+          <p class="reg-text">{{ ev.closes | datetime }}까지 신청할 수 있습니다.</p>
+        </div>
+        <div class="reg-state" data-when="waitlist"{% if view != "waitlist" %} hidden{% endif %}>
+          <p class="reg-title">정원 마감, 대기 신청 가능</p>
+          <p class="reg-text">대기 신청 시 취소 자리가 생기면 신청 순서대로 자동 배정되고 티켓이 발급됩니다.</p>
+        </div>
+        <div class="reg-state" data-when="full"{% if view != "full" %} hidden{% endif %}>
+          <p class="reg-title">신청 마감</p>
+          <p class="reg-text">정원과 대기 명단이 모두 찼습니다.</p>
+        </div>
+        <div class="reg-state" data-when="closed"{% if view != "closed" %} hidden{% endif %}>
+          <p class="reg-title">신청 기간 종료</p>
+          <p class="reg-text">이 행사는 더 이상 신청을 받지 않습니다.</p>
+        </div>
+        <div class="reg-state" data-when="ended"{% if view != "ended" %} hidden{% endif %}>
+          <p class="reg-title">종료된 행사</p>
+          <p class="reg-text">{% if status.held %}{{ ev.starts | date }}에 {{ status.held }}명이 참가했습니다.{% else %}{{ ev.starts | date }}에 진행된 행사입니다.{% endif %}</p>
+          {% if mine %}<a class="btn btn--primary btn--block" href="/t/{{ mine.id }}">내 티켓 보기</a>{% endif %}
+          <a class="btn btn--secondary btn--block" href="/">예정된 행사 보기</a>
+        </div>
+        <div class="reg-state" data-when="mine"{% if view != "mine" %} hidden{% endif %}>
+          <div class="cluster" style="justify-content: space-between">
+            <p class="reg-title" data-mine-title>{{ mine_card.title if mine_card }}</p>
+            <span class="badge{% if mine_card and mine_card.badge %} badge--{{ mine_card.tone }}{% endif %}" data-mine-badge{% if not mine_card or not mine_card.badge %} hidden{% endif %}>{{ mine_card.badge if mine_card }}</span>
+          </div>
+          <p class="reg-text" data-mine-text>{{ mine_card.text if mine_card }}</p>
+        </div>
+
+        <button class="btn btn--primary btn--block" type="button" data-cta{% if not cta_on %} hidden disabled{% endif %}>{{ cta_label }}</button>
+        <a class="btn btn--secondary btn--block" href="/events/{{ ev.id }}/calendar.ics" data-when="mine" data-before-entry{% if view != "mine" or mine.checked_in_at %} hidden{% endif %}>캘린더에 추가</a>
+        <p class="reg-foot" data-when="mine" data-before-entry{% if view != "mine" or mine.checked_in_at %} hidden{% endif %}>참석이 어려우면 티켓 페이지에서 신청을 취소해 주세요. 자리는 대기 중인 분께 넘어갑니다.</p>
+      </div>
+    </section>
+
+    <section class="event-section">
+      <h2>행사 소개</h2>
+      <p class="prose">{{ ev.description }}</p>
+    </section>
+
+    {% if status.state != "ended" %}
+    <section class="event-section">
+      <h2>신청 안내</h2>
+      <dl class="terms">
+        <div><dt>신청 기간</dt><dd>{{ ev.opens | datetime }} ~ {{ ev.closes | datetime }}</dd></div>
+        <div><dt>참가비</dt><dd>무료</dd></div>
+        <div><dt>정원</dt><dd>{{ ev.seat_limit }}명, 선착순 (대기 최대 {{ ev.waitlist_limit }}명)</dd></div>
+        <div><dt>참석 확인</dt><dd>{% if seat_counts_as_confirmed %}지금 신청하면 참석 확인 없이 입장할 수 있습니다.{% else %}{{ ev.deadline | datetime }}까지 티켓 페이지에서 참석 확인을 해 주세요. 확인하지 않은 자리는 대기 중인 분께 배정됩니다.{% endif %}</dd></div>
+        <div><dt>취소</dt><dd>행사 시작 전까지 티켓 페이지에서 취소할 수 있습니다.</dd></div>
+        <div><dt>입장</dt><dd>티켓 페이지의 QR 코드를 입구에서 보여 주세요.</dd></div>
+      </dl>
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="event-host">
+    <section class="side-block">
+      <h2 class="side-label">주최</h2>
+      <div class="host-text"><b>{{ settings.organizer }}</b><span>클라우드와 인프라를 함께 공부하는 파트입니다.</span></div>
+    </section>
+    {% if status.held >= 3 %}
+    <section class="side-block">
+      <h2 class="side-label">참가 현황</h2>
+      <p class="side-count">{{ icon("users") }}<span><b data-held>{{ status.held }}</b>명 {{ "참가" if status.state == "ended" else "신청" }}<span data-waitlisted-line {% if not status.waitlisted %}hidden{% endif %}>, 대기 <span data-waitlisted>{{ status.waitlisted }}</span>명</span></span></p>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+
+<div class="buybar" data-buybar>
+  <div class="buybar-text"><b data-buybar-price>무료</b><span data-buybar-note>{{ bar_note }}</span></div>
+  <button class="btn btn--primary" type="button" data-cta{% if not cta_on %} disabled{% endif %}>{{ cta_label }}</button>
+</div>
+
+<dialog class="sheet" data-signup aria-labelledby="signup-title">
+  <div class="sheet-head">
+    <h2 id="signup-title" data-sheet-title>참가 신청</h2>
+    <button class="sheet-close" type="button" data-close aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+
+  <form class="sheet-body stack" data-form novalidate>
+    <div class="order">
+      <p class="order-title">{{ ev.title }}</p>
+      <p class="order-when">{{ start | date }} {{ start | clock }}, {{ ev.venue }}</p>
+      <div class="order-line"><span data-order-ticket>일반 참가 1매</span><b>무료</b></div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="name">이름</label>
+      <input class="input" id="name" name="name" autocomplete="name" maxlength="40" required placeholder="김연세" value="{{ profile.name if profile else '' }}">
+    </div>
+    <div class="field">
+      <label class="field-label" for="email">이메일</label>
+      {% if profile %}
+        <input class="input" id="email" name="email" type="email" value="{{ profile.email }}" readonly>
+        <span class="field-hint">로그인한 이메일로 신청합니다. 신청 내역은 마이페이지에서 볼 수 있습니다.</span>
+      {% else %}
+        <input class="input" id="email" name="email" type="email" autocomplete="email" required placeholder="you@yonsei.ac.kr">
+        <span class="field-hint">한 이메일로 한 번만 신청할 수 있습니다. <a href="/login?next=/events/{{ ev.id }}">로그인</a>하면 신청 내역이 마이페이지에 모입니다.</span>
+      {% endif %}
+    </div>
+    <div class="field">
+      <label class="field-label" for="affiliation">소속 <span class="subtle">(선택)</span></label>
+      <input class="input" id="affiliation" name="affiliation" maxlength="60" placeholder="컴퓨터과학과" value="{{ profile.affiliation if profile else '' }}">
+    </div>
+    <div class="consent">
+      <label class="check"><input type="checkbox" name="agree" data-agree aria-label="개인정보 수집 및 이용 동의 (필수)"> <span><a href="/privacy" target="_blank">개인정보 수집 및 이용</a>에 동의합니다 <span class="subtle">(필수)</span></span></label>
+      <details>
+        <summary>내용 보기</summary>
+        <dl class="consent-terms">
+          <div><dt>수집 항목</dt><dd>이름, 이메일, 소속</dd></div>
+          <div><dt>이용 목적</dt><dd>참가 신청 확인과 행사 당일 입장 확인</dd></div>
+          <div><dt>보관 기간</dt><dd>행사 후 {{ settings.retention_days }}일, 이후 자동 삭제</dd></div>
+        </dl>
+        <p class="subtle">동의하지 않을 수 있으나, 동의하지 않으면 신청할 수 없습니다.</p>
+        {% if settings.recaptcha_site_key %}<p class="subtle">자동 신청 방지를 위해 Google reCAPTCHA를 사용합니다.</p>{% endif %}
+      </details>
+    </div>
+    <p class="field-error" data-form-error hidden></p>
+    <button class="btn btn--primary btn--block" type="submit" data-submit>신청하기</button>
+  </form>
+
+  <div class="sheet-body done" data-done hidden>
+    <span class="done-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg></span>
+    <p class="done-title" data-done-title>신청이 완료되었습니다</p>
+    <p class="muted" data-done-text></p>
+    <p class="done-note" data-done-mail hidden></p>
+    <p class="done-note" data-done-deadline hidden>{{ ev.deadline | datetime }}까지 티켓 페이지에서 참석 확인을 해 주세요.</p>
+    <dl class="done-kv">
+      <div><dt>신청 번호</dt><dd class="mono" data-done-code></dd></div>
+      <div><dt>참가자</dt><dd data-done-name></dd></div>
+      <div><dt>일시</dt><dd>{{ start | date }} {{ start | clock }}</dd></div>
+    </dl>
+    <a class="btn btn--primary btn--block" href="#" data-done-ticket>티켓 보기</a>
+    <a class="btn btn--secondary btn--block" href="/events/{{ ev.id }}/calendar.ics">캘린더에 추가</a>
+  </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+{% if settings.recaptcha_site_key %}
+<script>window.RECAPTCHA_SITE_KEY = "{{ settings.recaptcha_site_key }}";</script>
+<script src="https://www.google.com/recaptcha/enterprise.js?render={{ settings.recaptcha_site_key }}" async></script>
+{% endif %}
+<script src="/static/js/event.js?v={{ v }}"></script>
+{% endblock %}

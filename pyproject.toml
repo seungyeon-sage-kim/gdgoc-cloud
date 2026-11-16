@@ -1,0 +1,15 @@
+# Settings for the checks CI runs (ruff = linter and formatter, pytest = tests)
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+extend-exclude = [".data", "infra"]
+extend-include = ["lab"]  # the lab script is Python without .py
+
+[tool.ruff.lint]
+# pyflakes + pycodestyle errors, import order, likely bugs, modern syntax
+select = ["F", "E", "W", "I", "B", "UP"]
+ignore = ["E501", "B008"]  # long strings are fine; FastAPI uses calls in defaults (Body(...), File(...))
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
